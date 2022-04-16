@@ -40,20 +40,20 @@
 #define THROTTLEOFFSET 45
 #define THROTTLEMAX 175
 #define BRAKEOFFSET 50
-#define BRAKEMAX 190
+#define BRAKEMAX 175
 
 // parameters for speed calculation
-#define WHEEL_CIRCUMFERENCE 550 //690 for original M365 motor
-#define GEAR_RATIO 11 //15 for original M365 motor
+#define WHEEL_CIRCUMFERENCE 690 //690 for original M365 motor
+#define GEAR_RATIO 15 //15 for original M365 motor
 
 // speed limits for invividual modes in kph
-#define SPEEDLIMIT_ECO 6
-#define SPEEDLIMIT_NORMAL 20
+#define SPEEDLIMIT_ECO 20
+#define SPEEDLIMIT_NORMAL 25
 #define SPEEDLIMIT_SPORT 50
 
 // motor current limits for invividual modes in mA, see default settings at https://max.cfw.sh/#
-#define PH_CURRENT_MAX_ECO 16000
-#define PH_CURRENT_MAX_NORMAL 28000
+#define PH_CURRENT_MAX_ECO 20000
+#define PH_CURRENT_MAX_NORMAL 32000
 #define PH_CURRENT_MAX_SPORT 55000
 
 // motor current limit for regen in mA
@@ -63,7 +63,7 @@
 #define FW_CURRENT_MAX 18000 //max id
 
 // maximum battery currents in mA
-#define BATTERYCURRENT_MAX 14500
+#define BATTERYCURRENT_MAX 20000
 #define REGEN_CURRENT_MAX 10000
 
 // battery voltage limits in mV
@@ -76,7 +76,7 @@
 
 // settings for speed PLL (angle estimation)
 #define SPEED_PLL 1 //1 for using PLL, 0 for angle extrapolation
-#define P_FACTOR_PLL 10 //7 for original M365 motor
-#define I_FACTOR_PLL 10 //7 for original M365 motor
+#define P_FACTOR_PLL 7 //7 for original M365 motor
+#define I_FACTOR_PLL 7 //7 for original M365 motor
 
 #endif /* CONFIG_H_ */
