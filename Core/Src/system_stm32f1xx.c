@@ -94,7 +94,11 @@
 /*!< Uncomment the following line if you need to relocate the vector table
  anywhere in Flash or Sram, else the vector table is kept at the automatic
  remap of boot address selected */
+#ifdef DO_NOT_USE_M365_BOOTLOADER
+#warning NOT BUILDING FOR M365 BOOTLOADER
+#else
 #define USER_VECT_TAB_ADDRESS
+#endif
 
 #if defined(USER_VECT_TAB_ADDRESS)
 /*!< Uncomment the following line if you need to relocate your vector Table

@@ -1,6 +1,1 @@
-dev: M365;
-nam: M365_v3;
-enc: B;
-typ: DRV;
-md5: b5594fdffc32ab3bd0c3fff0a6880ba2;
-md5e: 061f8406e0e4589c9eed3ccec6167df9;
+output for flashing

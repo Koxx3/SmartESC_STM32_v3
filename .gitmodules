@@ -1,0 +1,3 @@
+[submodule "Lib/EBiCS_motor_FOC"]
+	path = Lib/EBiCS_motor_FOC
+	url = git@github.com:EBiCS/EBiCS_motor_FOC.git

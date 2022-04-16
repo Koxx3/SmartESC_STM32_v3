@@ -24,135 +24,141 @@
 #include "button_processing.h"
 #include "main.h"
 #include "config.h"
+#include "motor.h"
 
-
-volatile uint32_t main_loop_counter;
 static uint8_t power_button_state = 0;
 
 uint8_t buttonState() {
-    static const uint32_t DEBOUNCE_MILLIS = 20 ;
-    bool buttonstate = HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET ;
-    uint32_t buttonstate_ts = HAL_GetTick() ;
+  static const uint32_t DEBOUNCE_MILLIS = 20 ;
+  bool buttonstate = HAL_GPIO_ReadPin(PWR_BTN_GPIO_Port, PWR_BTN_Pin) == GPIO_PIN_SET;
+  uint32_t buttonstate_ts = HAL_GetTick();
 
-    uint32_t now = HAL_GetTick() ;
-    if( now - buttonstate_ts > DEBOUNCE_MILLIS )
+  uint32_t now = HAL_GetTick();
+  if (now - buttonstate_ts > DEBOUNCE_MILLIS)
+  {
+    if (buttonstate != (HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET))
     {
-        if( buttonstate != (HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET))
-        {
-            buttonstate = !buttonstate ;
-            buttonstate_ts = now ;
-        }
+      buttonstate = !buttonstate;
+      buttonstate_ts = now;
     }
-    return buttonstate ;
+  }
+
+  return buttonstate;
 }
 
-eButtonEvent getButtonEvent()
+// NOTE: VERY_LONG_PRESS will only happen if brake is also pressed (to avoid user mistake with LONG_PRESS)
+eButtonEvent getButtonEvent(M365State_t *p_M365State)
 {
-    static const uint32_t DOUBLE_GAP_MILLIS_MAX 	= 250;
-    static const uint32_t SINGLE_PRESS_MILLIS_MAX 	= 800;
-    static const uint32_t LONG_PRESS_MILLIS_MAX 	= 5000;
+  static const uint32_t DOUBLE_GAP_MILLIS_MAX     = 250;
+  static const uint32_t SINGLE_PRESS_MILLIS_MAX 	= 800;
+  static const uint32_t VERY_LONG_PRESS_MILLIS_MAX 	  = 5000;
 
-    static uint32_t button_down_ts = 0 ;
-    static uint32_t button_up_ts = 0 ;
-    static bool double_pending = false ;
-    static bool button_down = false ; ;
+  static uint32_t button_down_ts = 0;
+  static uint32_t button_up_ts = 0;
+  static bool double_pending = false;
+  static bool button_down = false;
 
-    eButtonEvent button_event = NO_PRESS ;
-    uint32_t now = HAL_GetTick() ;
+  eButtonEvent button_event = NO_PRESS;
+  uint32_t now = HAL_GetTick();
 
-    if( button_down != buttonState() ) {
-        button_down = !button_down ;
-        if( button_down ) {
-            button_down_ts = now ;
-        } else {
-            button_up_ts = now ;
-            if( double_pending ) {
-                button_event = DOUBLE_PRESS ;
-                double_pending = false ;
-            }
-            else {
-                double_pending = true ;
-            }
-        }
+  if (button_down != buttonState()) {
+    button_down = !button_down;
+    if (button_down) {
+      button_down_ts = now;
+    } else {
+      button_up_ts = now;
+      if (double_pending) {
+        button_event = DOUBLE_PRESS;
+        double_pending = false;
+      } else {
+        double_pending = true;
+      }
     }
+  }
 
-   // uint32_t diff =  button_up_ts - button_down_ts;
-    if (!button_down && double_pending && now - button_up_ts > DOUBLE_GAP_MILLIS_MAX) {
-    	double_pending = false ;
-    	button_event = SINGLE_PRESS ;
-	} else if (button_down && now -button_down_ts >= SINGLE_PRESS_MILLIS_MAX && now -button_down_ts <= LONG_PRESS_MILLIS_MAX) {
-		double_pending = false ;
-		button_event = LONG_PRESS ;
-	} else if (button_down && now - button_down_ts > LONG_PRESS_MILLIS_MAX) {
-		double_pending = false ;
-		button_event = VERY_LONG_PRESS ;
-	}
+  if (!button_down && double_pending && now - button_up_ts > DOUBLE_GAP_MILLIS_MAX) {
+    double_pending = false;
+    button_event = SINGLE_PRESS;
+	} else if (button_down &&
+    (now - button_down_ts >= SINGLE_PRESS_MILLIS_MAX) && // if time over single press
+      ((now - button_down_ts <= VERY_LONG_PRESS_MILLIS_MAX) || // if time lower than very long press OR brake is not pressed
+      p_M365State->brake_active == false)) {
+    double_pending = false;
+    button_event = LONG_PRESS;
+  } else if (button_down && now - button_down_ts > VERY_LONG_PRESS_MILLIS_MAX) {
+    double_pending = false;
+    button_event = VERY_LONG_PRESS;
+  }
 
-    return button_event ;
+  return button_event;
 }
 
-void checkButton(MotorParams_t *MP,MotorState_t *MS) {
-	/* Infinite loop */
-	  if(MS->shutdown>85&&(MS->mode>>4)) power_control(DEV_PWR_OFF);
-	  if(main_loop_counter > 25){
-			switch( getButtonEvent() ){
-				  case NO_PRESS : break ;
-				  case SINGLE_PRESS : {
-					  MS->light = !MS->light;
-					 // commands_printf("SINGLE_PRESS");
-				  } break ;
-				  case VERY_LONG_PRESS :   {
-					  MS->mode &= ~(1 << 4); //clear "off" (bit 4)
-					  MS->shutdown=0;
-					  autodetect();
-					 // commands_printf("LONG_PRESS");
-				  } break ;
-				  case LONG_PRESS :		{
-					  MS->mode |= (1 << 4); //set "off" (bit 4)
+void checkButton(M365State_t *p_M365State) {
+  static uint32_t counter;
 
-					  if(MS->shutdown==0){
-						  MS->shutdown=1;
-						  MS->beep = 1;
-					  }
+  // check the shutdown counter
+  if ((p_M365State->shutdown > 250) && // 5 seconds (5 / 0.02 = 250)
+   (p_M365State->mode >> 4)) {
+    power_control(DEV_PWR_OFF);
+  }
 
-				  } break ;
+  counter++;
+  if ((counter % 2) == 0) { // every 20ms
+    switch (getButtonEvent(p_M365State)) {
+      case NO_PRESS:
+        break;
 
-				  case DOUBLE_PRESS : {
-					 // commands_printf("DOUBLE_PRESS");
-					  MS->mode=MS->mode+2;
-					  if(MS->mode>4)MS->mode=0;
-					  set_mode(MP,MS);
-				  } break ;
-			 }
-		}
-		main_loop_counter++;
+      case SINGLE_PRESS:
+        p_M365State->light = !p_M365State->light;
+        break;
 
+      case VERY_LONG_PRESS:
+        p_M365State->mode &= ~(1 << 4); //clear "off" (bit 4)
+        p_M365State->shutdown = 0;
+        motor_autodetect();
+        break;
 
+      case LONG_PRESS:
+        p_M365State->mode |= (1 << 4); // set "off" (bit 4)
 
+        if (p_M365State->shutdown == 0) {
+          p_M365State->shutdown = 1;
+          p_M365State->beep = 1;
+        }
+        break;
+
+      case DOUBLE_PRESS:
+        p_M365State->mode = p_M365State->mode + 2;
+        
+        if (p_M365State->mode > 4)
+          p_M365State->mode = 0;
+        
+        set_mode(p_M365State);
+        break;
+    }
+  }
 }
 
 void PWR_init() {
 	/* Check button pressed state at startup */
 	power_button_state = buttonState();
 
-    /* Power ON board temporarily, ultimate decision to keep hardware ON or OFF is made later */
+  /* Power ON board temporarily, ultimate decision to keep hardware ON or OFF is made later */
 	power_control(DEV_PWR_ON);
-
-	}
+}
 
 void power_control(uint8_t pwr)
 {
-	if(pwr == DEV_PWR_ON) {
+	if (pwr == DEV_PWR_ON) {
 		/* Turn the PowerON line high to keep the board powered on even when
 		 * the power button is released
 		 */
 		HAL_GPIO_WritePin(TPS_ENA_GPIO_Port, TPS_ENA_Pin, GPIO_PIN_SET);
-	} else if(pwr == DEV_PWR_OFF) {
+	} else if (pwr == DEV_PWR_OFF) {
 
 		//motors_free(0, NULL);
 		//sleep_x_ticks(2000);
 		//stop_motors();
-
 
 		while(HAL_GPIO_ReadPin(PWR_BTN_GPIO_Port, PWR_BTN_Pin));
 		HAL_GPIO_WritePin(TPS_ENA_GPIO_Port, TPS_ENA_Pin, GPIO_PIN_RESET);
@@ -168,27 +174,24 @@ void power_control(uint8_t pwr)
 	}
 }
 
-void set_mode(MotorParams_t *MP, MotorState_t *MS){
+void set_mode(M365State_t *p_M365State) {
 
-	switch( MS->mode & 0x07){ //look only on the lowest 3 bits
-		case eco :{
-			MP->phase_current_limit=PH_CURRENT_MAX_ECO/CAL_I;
-			MP->speed_limit=SPEEDLIMIT_ECO;
+	switch (p_M365State->mode & 0x07) { // look only on the lowest 3 bits
+		case eco:
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_ECO;
+			p_M365State->speed_limit = SPEEDLIMIT_ECO;
+			break;
 
-			} break ;
-		case normal :{
-			MP->phase_current_limit=PH_CURRENT_MAX_NORMAL/CAL_I;
-			MP->speed_limit=SPEEDLIMIT_NORMAL;
+		case normal:
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_NORMAL;
+			p_M365State->speed_limit = SPEEDLIMIT_NORMAL;
+      break;
 
-			} break ;
-		case sport :{
-			MP->phase_current_limit=PH_CURRENT_MAX_SPORT/CAL_I;
-			MP->speed_limit=SPEEDLIMIT_SPORT;
-
-			} break ;
-
+		case sport:
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_SPORT;
+			p_M365State->speed_limit = SPEEDLIMIT_SPORT;
+      break;
 	}
-	calculate_tic_limits();
 }
 
 

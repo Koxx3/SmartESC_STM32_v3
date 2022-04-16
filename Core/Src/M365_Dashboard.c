@@ -56,7 +56,7 @@ enum bytesOfMessage64 {
 	SOC = 7,
 	Light = 8,
 	Beep = 9,
-	errorcode = 11
+  errorcode = 11
 } msg64;
 
 enum bytesOfGeneralMessage {
@@ -78,7 +78,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0222;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "EBiCS_0.5");
+	strcpy(MT.scooter_serial, "EBiCS_0.4");
 	MT.ESC_status_2= 0x0800;
 	char *IDp = (char *)proc_ID_address;
 	char *IDs = ((char *)sysinfoaddress)+436;
@@ -135,7 +135,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 
 }
 
-void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTypeDef huart1){
+void search_DashboardMessage(M365State_t* p_M365State, UART_HandleTypeDef huart1){
 
 	if(ui32_timeoutcounter>3200&&MT.ESC_status_2 != 0x0802){
 
@@ -183,7 +183,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 			case STATE_LENGTH_DETECTED: { //read whole message and call processing
 				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength-1){
 					memcpy(ui8_dashboardmessage,ui8_rx_buffer+ui8_messagestartpos,ui8_messagelength);
-					process_DashboardMessage( MS,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength,huart1);
+					process_DashboardMessage(p_M365State, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength,huart1);
 					ui8_state=STATE_LOST;
 				  	   CLEAR_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
 				  	   DMA1_Channel5->CNDTR=sizeof(ui8_rx_buffer);
@@ -201,7 +201,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 		ui32_timeoutcounter++;
 }
 
-void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1 ){
+void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1) {
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
@@ -216,56 +216,65 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			ui8_tx_buffer[msglength]=0x08;
 			ui8_tx_buffer[receiver]=0x21;
 			ui8_tx_buffer[command]=message[command];
-			ui8_tx_buffer[Speed]=MS->Speed;
-			ui8_tx_buffer[Mode]=MS->mode;
-			ui8_tx_buffer[SOC]=map(MS->Voltage,BATTERYVOLTAGE_MIN,BATTERYVOLTAGE_MAX,0,96);
-			if(MS->light)ui8_tx_buffer[Light]=64;
+			ui8_tx_buffer[Speed]=p_M365State->speed;
+			ui8_tx_buffer[Mode]=p_M365State->mode;
+			ui8_tx_buffer[SOC]=map(p_M365State->battery_voltage,BATTERYVOLTAGE_MIN,BATTERYVOLTAGE_MAX,0,96);
+			if(p_M365State->light)ui8_tx_buffer[Light]=64;
 			else ui8_tx_buffer[Light]=0;
-			ui8_tx_buffer[Beep]= MS->beep;
-			ui8_tx_buffer[errorcode]=MS->error_state;
+			ui8_tx_buffer[Beep] = p_M365State->beep;
+      ui8_tx_buffer[errorcode] = p_M365State->error_state;
 
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
-			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
+			if(p_M365State->beep&&ui8_tx_buffer[Beep])p_M365State->beep = 0;
 
 			}
 			break;
 
-		case 0x65: {
+		case 0x65:
+			if (message[Brake] < (BRAKEOFFSET >> 1)) { // brake value is to much lower, there must be an error like brake is not connected
+        
+        p_M365State->error_state = brake;
 
-			if(message[Brake]<BRAKEOFFSET>>1)MS->error_state=brake;
-			else if(MS->error_state==brake)MS->error_state=none;
-			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,MP->regen_current)>0){
+      } else if (p_M365State->error_state == brake) { // no brake error, remove it
+  
+        p_M365State->error_state = none;
+      }
 
-				if(MS->Speed>2){
-					MS->i_q_setpoint_temp =map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,MP->regen_current);
-					// ramp down regen strength at the max voltage to avoid the BMS shutting down the battery.
-					MS->i_q_setpoint_temp =-map(MS->Voltage,BATTERYVOLTAGE_MAX-1000,BATTERYVOLTAGE_MAX,MS->i_q_setpoint_temp,0);
-					MS->brake_active=true;
+      // calculate regen_current depending on the brake
+      int32_t regen_current = map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, p_M365State->regen_max_current);
+      
+      // if regen_current > 0 means we are braking 
+			if (regen_current > 0) {
+				if (p_M365State->speed > 2) {
+
+          // ramp down regen strength at the max voltage to avoid the BMS shutting down the battery.
+          p_M365State->i_q_setpoint_target = -map(p_M365State->battery_voltage, BATTERYVOLTAGE_MAX - 1000, BATTERYVOLTAGE_MAX, regen_current, 0);
+
+					p_M365State->brake_active = true;
+        } else {
+          p_M365State->i_q_setpoint_target = 0;
+          p_M365State->brake_active = true;
 				}
-				else {
-					MS->i_q_setpoint_temp =0;
-					MS->brake_active=false;
-					}
-				}
-			else{
-				MS->i_q_setpoint_temp = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,MP->phase_current_limit);
-				MS->brake_active=false;
-				}
-			}
-			break;
+
+      } else { // we are not braking
+        // map throttle value to motor current
+				p_M365State->i_q_setpoint_target = map(message[Throttle], THROTTLEOFFSET, THROTTLEMAX, 0, p_M365State->phase_current_limit);
+        p_M365State->brake_active = false;
+      }
+    break;
 
 		case 0x61: {
 			//55 AA 06 20 61 DA 0C 02 27 00 69 FE
 			//55 AA 0E 23 01 DA 48 FF 73 06 78 78 54 51 53 32 10 67 A2 FA
 
-			if(map(message[9],BRAKEOFFSET,BRAKEMAX,0,MP->regen_current)>0){
-				if(MS->Speed>2)	MS->i_q_setpoint_temp =-map(message[9],BRAKEOFFSET,BRAKEMAX,0,MP->regen_current);
-				else MS->i_q_setpoint_temp =0;
+			if(map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_MAX_CURRENT)>0){
+				if(p_M365State->speed > 2) p_M365State->i_q_setpoint_target = -map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_MAX_CURRENT);
+				else p_M365State->i_q_setpoint_target = 0;
 				}
 			else{
-				MS->i_q_setpoint_temp = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,MP->phase_current_limit);
+				p_M365State->i_q_setpoint_target = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
 				}
 
 
@@ -471,10 +480,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			}
 			break;
 		}//end switch
-
-
 	}
-
 }
 
 void addCRC(uint8_t * message, uint8_t size){

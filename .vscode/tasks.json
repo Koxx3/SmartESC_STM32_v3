@@ -4,19 +4,19 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build dev",
             "type": "shell",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
             "linux": {
-                "command": "make"
+                "command": "make -j BUILD_ENV=development"
             },
             "problemMatcher": [],
             "group": {
                 "kind": "build",
-                "isDefault": false
+                "isDefault": true
             }
         },
         {
@@ -36,26 +36,11 @@
             "group": "build"
         },
         {
-          "label": "OpenOCD - Jlink",
+          "label": "OpenOCD",
           "type": "shell",
           "args": [],
           "linux": {
               "command": "openocd -c 'interface jlink; transport select swd; source [find target/stm32f1x.cfg]'"
-          },
-          "problemMatcher": []
-        },
-        {
-          "label": "OpenOCD - STLinkV2",
-          "type": "shell",
-          "args": [],
-          "linux": {
-            "command": "openocd",
-            "args": [
-                "-f",
-                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stlink-v2.cfg",
-                "-f",
-                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stm32f1x.cfg"
-            ]
           },
           "problemMatcher": []
         }
