@@ -61,7 +61,7 @@ DMA_HandleTypeDef hdma_adc1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim4;
+//TIM_HandleTypeDef htim4; not used here but in stm32f1xx_hal_timebase_tim.c:29
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
