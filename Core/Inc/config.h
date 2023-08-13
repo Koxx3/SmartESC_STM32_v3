@@ -38,7 +38,7 @@
 
 // min and max values of throttle and brake signals in ADC counts
 #define THROTTLEOFFSET 45
-#define THROTTLEMAX 175
+#define THROTTLEMAX 195
 #define BRAKEOFFSET 50
 #define BRAKEMAX 190
 
@@ -47,12 +47,12 @@
 #define GEAR_RATIO 11 //15 for original M365 motor
 
 // speed limits for invividual modes in kph
-#define SPEEDLIMIT_ECO 6
-#define SPEEDLIMIT_NORMAL 20
-#define SPEEDLIMIT_SPORT 50
+#define SPEEDLIMIT_ECO 60
+#define SPEEDLIMIT_NORMAL 60
+#define SPEEDLIMIT_SPORT 90
 
 // motor current limits for invividual modes in mA, see default settings at https://max.cfw.sh/#
-#define PH_CURRENT_MAX_ECO 16000
+#define PH_CURRENT_MAX_ECO 28000
 #define PH_CURRENT_MAX_NORMAL 28000
 #define PH_CURRENT_MAX_SPORT 55000
 
@@ -60,10 +60,10 @@
 #define REGEN_CURRENT 20000
 
 // maximum current for flux weakening in mA
-#define FW_CURRENT_MAX 18000 //max id
+#define FW_CURRENT_MAX 35000 //max id
 
 // maximum battery currents in mA
-#define BATTERYCURRENT_MAX 14500
+#define BATTERYCURRENT_MAX 35500
 #define REGEN_CURRENT_MAX 10000
 
 // battery voltage limits in mV
