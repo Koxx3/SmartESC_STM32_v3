@@ -31,9 +31,9 @@
 #define CAL_I 38		// ADC counts * CAL_I = current in mA
 
 // gains for PI controls
-#define P_FACTOR_I_Q 100
+#define P_FACTOR_I_Q 125
 #define I_FACTOR_I_Q 2
-#define P_FACTOR_I_D 100
+#define P_FACTOR_I_D 145
 #define I_FACTOR_I_D 10
 
 // min and max values of throttle and brake signals in ADC counts
@@ -64,7 +64,7 @@
 
 // maximum battery currents in mA
 #define BATTERYCURRENT_MAX 35500
-#define REGEN_CURRENT_MAX 10000
+#define REGEN_CURRENT_MAX 20000
 
 // battery voltage limits in mV
 #define BATTERYVOLTAGE_MIN 33000
