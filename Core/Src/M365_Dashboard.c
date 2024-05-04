@@ -218,7 +218,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			ui8_tx_buffer[command]=message[command];
 			ui8_tx_buffer[Speed]=p_M365State->speed;
 			ui8_tx_buffer[Mode]=p_M365State->mode;
-			ui8_tx_buffer[SOC]=map(p_M365State->battery_voltage,BATTERYVOLTAGE_MIN,BATTERYVOLTAGE_MAX,0,96);
+			ui8_tx_buffer[SOC]=map(p_M365State->battery_voltage,BATTERYVOLTAGE_MIN,BATTERYVOLTAGE_MAX,0,42);
 			if(p_M365State->light)ui8_tx_buffer[Light]=64;
 			else ui8_tx_buffer[Light]=0;
 			ui8_tx_buffer[Beep] = p_M365State->beep;
