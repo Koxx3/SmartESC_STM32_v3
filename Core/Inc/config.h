@@ -18,7 +18,10 @@
 #define REGEN_MAX_CURRENT 10000
 
 // maximum current for field weakening in mA
-#define FIELD_WEAKNING_CURRENT_MAX 0 //max id
+#define FIELD_WEAKNING_CURRENT_MAX 600 //max id
+
+#define BATTERY_LI_ION_CELLS_NUMBER 10
+#define COMMUNICATIONS_BATTERY_VOLTAGE	(BATTERY_LI_ION_CELLS_NUMBER * 3.45) // example: 7S battery, should be = 24
 
 // ADC channels
 #define ADC_VOLTAGE 0
