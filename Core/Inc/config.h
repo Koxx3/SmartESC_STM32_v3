@@ -32,12 +32,12 @@
 #define P_FACTOR_I_D 1
 #define I_FACTOR_I_D 1
 #define MAX_D_FACTOR 1
-//#define ADCTHROTTLE
+#define ADCTHROTTLE
 #define THROTTLEOFFSET 900
 #define THROTTLEMAX 3500
 #define WHEEL_CIRCUMFERENCE 2200
 #define GEAR_RATIO 60
-#define SPEEDLIMIT 25
+#define SPEEDLIMIT 45
 
 #define PH_CURRENT_MAX 600
 #define BATTERYCURRENT_MAX 10000
@@ -58,3 +58,4 @@
 #define I_FACTOR_PLL 9
 
 #endif /* CONFIG_H_ */
+ 
