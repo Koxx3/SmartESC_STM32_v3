@@ -4,6 +4,7 @@
 #include "motor.h"
 #include "button_processing.h"
 #include "M365_Dashboard.h"
+#include "vesc_uart.h"
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
@@ -285,6 +286,7 @@ int main(void) {
 
   // init dashboard
 	M365Dashboard_init(huart1);
+	VESC_UART_Init(&huart3);
 	PWR_init();
 
 	while (1) {
@@ -294,6 +296,7 @@ int main(void) {
 
 		// search and process display message
 		search_DashboardMessage(&M365State, huart1);
+		VESC_UART_Process(&MSPublic);
     // update vars to MSPublic
     MSPublic.phase_current_limit = M365State.phase_current_limit;
     MSPublic.i_q_setpoint_target = M365State.i_q_setpoint_target;
@@ -327,11 +330,13 @@ int main(void) {
 			M365State.temperature = (MSPublic.adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 
       // DEBUG
+      /*
       static uint8_t debug_cnt = 0;
       if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
         debug_cnt = 0;
         printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
       }
+      */
 		}
 	}
 }

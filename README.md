@@ -1,43 +1,55 @@
-For the last working "stancecoke" version, switch to the v0.5 branch!  
-https://github.com/Koxx3/SmartESC_STM32_v3/tree/v0.5
+# SmartESC_STM32_v3.31_Vesc (EBiCS Fork)
 
-Attention: new logic to activate the autodetect procedure:. 
+
+Attention: new logic to activate the autodetect procedure:
 Pull the brake lever and press the dashboard button for 5 seconds!
 
+Fork of EBiCS firmware for Lishui devices. Ported to Xiaomi M365 controller.
+Use JST PA series 2mm pitch for the connectors. (need to be confirmed)
 
-Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller. 
-Use JST PA series 2mm pitch for the connectors. (need to be confirmed) 
+This branch works with the original M365 dashboard and now features **VESC UART Protocol** support!
 
-This branch works with the original M365 dashboard  
+## Recent Updates & Improvements
 
-How to use:  
-Method 1 (github account needed):  
-Fork the project repository to your github account by clicking the "Fork" icon.  
-Edit the config.h in your repository online and commit the changes.  
-Click on the "Actions" button in the menu bar of the github page. There you can see the "workflows".  
-Wait until the running workflow is finished, then click on the workflow headline.
-Download the zipfile with the generated zipfile by clicking on the cube icon at the bottom of the page.  
-You can find a tutorial at [YouTube](https://youtu.be/Pe2UTPPxX7U)  
+### 1. VESC UART Protocol Integration
+The firmware now implements the VESC UART communication protocol on **USART3** (typically the programming/debug port).
+- **Compatibility:** Interfaces with the latest version of the VESC Tool.
+- **Commands Supported:**
+  - `COMM_FW_VERSION`: Allows identification by the VESC Tool.
+  - `COMM_GET_VALUES`: Provides real-time telemetry including battery voltage, motor current, and RPM.
+  - `COMM_SET_CURRENT`: Allows controlling the motor current directly from the VESC Tool.
+- **QoL Addition:** You can now use the VESC Tool for real-time data visualization, logging, and remote control, making tuning and diagnostics much easier.
 
-Method 2 (lokal installation):  
-Install the [STM Cube IDE](https://www.st.com/en/development-tools/stm32cubeide.html#overview&secondary=st-get-software)  
-Start the IDE and install egit from the eclipse marketplace (Help --> Eclipse Marketplace...)  
-Import this repo from github (File --> Import --> git --> Projects from git)  
+*Note: Standard debug `printf_` output on USART3 has been disabled to prevent interference with the VESC protocol.*
 
-Edit the file config.h (in the folder Core/Inc) according to your wishes. Working settings for the original M365 are in the comments, so use them to have a proven start setting.  
+### 2. Bug Fixes & Stability
+- **Circular Buffer Safety:** Fixed a critical out-of-bounds access bug in the M365 Dashboard protocol parser that occurred during buffer wrap-around.
+- **CRC Robustness:** Added boundary checks to the dashboard CRC calculation and verification functions to prevent memory corruption with malformed packets.
+- **Build System:** Resolved multiple definition errors of the `huart3` handle, ensuring a clean compilation using GCC ARM.
 
-Click on "Build" (The icon with the hammer)  
+## How to use:
+### Method 1 (GitHub Actions - Easiest):
+1. Fork this project to your GitHub account.
+2. Edit `Core/Inc/config.h` in your repository online and commit the changes.
+3. Click on the **Actions** button and monitor the "workflows".
+4. Once finished, download the generated zip-file by clicking on the cube icon at the bottom of the summary page.
+5. You can find a tutorial at [YouTube](https://youtu.be/Pe2UTPPxX7U)
 
-in the folder /tools/zip-output the zip-file ready for use with your scooter is generated.
-Copy it to your mobile phone and flash it to the scooter by the app downG.
+### Method 2 (Local Installation):
+1. Install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
+2. Import this repo (File --> Import --> Git --> Projects from Git).
+3. Edit `Core/Inc/config.h`. Working settings for the original M365 are in the comments.
+4. Click the "Build" icon (hammer).
+5. The flashable zip-file is generated in `/tools/zip-output`.
+6. Copy it to your phone and flash via the **downG** app.
 
-After flashing, lift the motor, so it can spin in the air without load. Press the dashboard button for 5s, the autodetect routine starts. The motor turns slowly. After stopping, the scooter is ready to run.  
+## Operation
+After flashing, lift the motor so it can spin freely. Press the dashboard button for 5s to start the **autodetect routine**. The motor will turn slowly; once it stops, the scooter is calibrated.
 
-Dashboard button use:  
-short press: switch lights  
-double click: switch ride modes  
-long press: switch off  
-very long press: run autodetect  
-
+**Dashboard Button Controls:**
+- **Short Press:** Toggle lights
+- **Double Click:** Switch ride modes
+- **Long Press:** Power off
+- **Very Long Press (5s) + Brake:** Run autodetect
 
 ![PCB Layout M365](https://github.com/Koxx3/SmartESC_STM32_v3/blob/master/Documentation/PCB%20Layout%20M365.PNG)

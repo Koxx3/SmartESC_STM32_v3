@@ -16,11 +16,10 @@
 #include "stm32f1xx_hal_flash.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
-UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[132];
 static uint8_t ui8_dashboardmessage[132];
 static uint8_t enc[128];
-static char buffer[64];
 static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
@@ -164,8 +163,9 @@ void search_DashboardMessage(M365State_t* p_M365State, UART_HandleTypeDef huart1
 
 			switch (ui8_state) {
 			case STATE_LOST: { //if no message start is detected yet, search for start pattern 0x55 0xAA
-				if(ui8_rx_buffer[ui8_oldpointerposition]==0xAA&&ui8_rx_buffer[ui8_oldpointerposition-1]==0x55){
-					ui8_messagestartpos=ui8_oldpointerposition-1;
+				uint8_t previous = (ui8_oldpointerposition == 0) ? (sizeof(ui8_rx_buffer) - 1) : (ui8_oldpointerposition - 1);
+				if(ui8_rx_buffer[ui8_oldpointerposition]==0xAA && ui8_rx_buffer[previous]==0x55){
+					ui8_messagestartpos=previous;
 					if(ui8_messagestartpos<sizeof(ui8_rx_buffer)-24){
 					ui8_state=STATE_START_DETECTED;
 					}
@@ -444,10 +444,6 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 				memcpy(target,source+6,packetsize);
 				decr_and_flash(enc,flashstartaddress,ui16_update_size,packetsize);
 				flashstartaddress+=packetsize;
-
-		  		sprintf_(buffer, "%d, %d, %d\r\n", flashstartaddress,packetsize, olddataposition);
-		  		HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&buffer, strlen(buffer));
-
 			}
 			olddataposition=message[5];
 
@@ -484,6 +480,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 }
 
 void addCRC(uint8_t * message, uint8_t size){
+    if (size > 95) return;
     unsigned long cksm = 0;
     for(int i = 2; i < size - 2; i++) cksm += message[i];
     cksm ^= 0xFFFF;
@@ -493,6 +490,7 @@ void addCRC(uint8_t * message, uint8_t size){
 }
 
 int16_t checkCRC(uint8_t * message, uint8_t size){
+    if (size < 4 || size > 132) return -1;
     unsigned long cksm = 0;
     for(int i = 2; i < size - 2; i++) cksm += message[i];
     cksm ^= 0xFFFF;
