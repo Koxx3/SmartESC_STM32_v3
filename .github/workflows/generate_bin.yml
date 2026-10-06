@@ -1,49 +1,40 @@
-name: C/C++ CI
+name: Build M365 V3
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: [master]
+  workflow_dispatch:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-    env:
-      # ruleid: allowed-unsecure-commands
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - name: log untrusted output
-      run: |
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-        # disable command workflow processing
-        echo "::stop-commands::`echo -n ${{ github.token }} | sha256sum | head -c 64`"
+      - name: Install ARM GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
 
-        # log untrusted output
-        echo "untrusted output"
+      - name: Build
+        run: make
 
-        # enable workflow command processing
-        echo "::`echo -n ${{ github.token }} | sha256sum | head -c 64`::"
-    - name: arm-none-eabi-gcc
-      uses: fiam/arm-none-eabi-gcc@v1.0.2
-      with:
-        release: '9-2020-q2'
-    - name: make
-      run: make
-      
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - run: python tools/xiaotea/Scripts/prepareZip_online.py      
-    - name: 'Upload Artifact'
-      uses: actions/upload-artifact@v2
-      with:
-        path: ${{ github.workspace }}/tools/zip_output
-        name: M365_v3_build_${{ github.run_number }}
-        retention-days: 5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare firmware package
+        run: |
+          python tools/xiaotea/Scripts/prepareZip_online.py
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ github.workspace }}/tools/zip_output
+          name: M365_v3_build_${{ github.run_number }}
+          retention-days: 5
