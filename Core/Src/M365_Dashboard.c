@@ -16,7 +16,7 @@
 #include "stm32f1xx_hal_flash.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
-UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart3;;
 static uint8_t ui8_rx_buffer[132];
 static uint8_t ui8_dashboardmessage[132];
 static uint8_t enc[128];

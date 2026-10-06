@@ -1,0 +1,45 @@
+name: Build M365 V3
+
+on:
+  push:
+    branches: [patch-2]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install ARM GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Clean
+        run: make clean
+
+      - name: Build
+        run: make
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare firmware package
+        run: |
+          mkdir -p tools/zip_output
+          cp build/EBiCS_Firmware2.bin tools/zip_output/firmware.bin
+          python tools/xiaotea/Scripts/prepareZip_online.py
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          path: tools/zip_output
+          name: M365_v3_build_${{ github.run_number }}
+          retention-days: 5
